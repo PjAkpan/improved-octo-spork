@@ -1,58 +1,59 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 
-// Exchange rates for conversion (static values for simplicity)
+
+// Exchange rates for conversion
 const exchangeRates: Record<'USD' | 'EUR' | 'NGN', number> = {
   USD: 1,
-  EUR: 0.91, // Example exchange rate Vrublesky78*
-  NGN: 1560, // Example exchange rate
+  EUR: 0.91,
+  NGN: 1560,
 };
 
 const Menu = () => {
   const [currency, setCurrency] = useState<'USD' | 'EUR' | 'NGN'>('USD');
   const [activeSection, setActiveSection] = useState(0);
+  const [menuSections, setMenuSections] = useState<
+    { title: string; items: { name: string; description: string; price: number; image: string }[] }[]
+  >([]);
 
-  const convertPrice = (price: string) => {
-    const priceValue = parseFloat(price.replace(/[^\d.-]/g, ''));
-    const convertedPrice = priceValue * exchangeRates[currency];
+  useEffect(() => {
+    // Fetch menu sections from Supabase
+    const fetchMenuSections = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/menu');
+        const fetchedMenu = response.data.reduce((sections: any[], item: any) => {
+          const sectionIndex = sections.findIndex(
+            (section: any) => section.title === item.section
+          );
+          if (sectionIndex !== -1) {
+            sections[sectionIndex].items.push(item);
+          } else {
+            sections.push({
+              title: item.section,
+              items: [item],
+            });
+          }
+          return sections;
+        }, []);
+        setMenuSections(fetchedMenu);
+      } catch (error) {
+        console.error('Error fetching menu items:', error);
+      }
+    };
+    fetchMenuSections();
+  }, []);
+
+  const convertPrice = (price: number) => {
+    const convertedPrice = price * exchangeRates[currency];
     return `${currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '₦'}${convertedPrice.toFixed(2)}`;
   };
-
-  const menuSections = [
-    {
-      title: 'Breakfast',
-      items: [
-        { name: 'Pancakes', description: 'Fluffy pancakes with syrup', price: '$5.99', image: '/images/pancakes.jpg' },
-        { name: 'Omelette', description: '3-egg omelette with cheese', price: '$6.99', image: '/images/omelette.jpg' },
-      ],
-    },
-    {
-      title: 'Lunch',
-      items: [
-        { name: 'Grilled Cheese Sandwich', description: 'Cheesy goodness', price: '$4.99', image: '/images/grilled_cheese.jpg' },
-        { name: 'Caesar Salad', description: 'Fresh greens and croutons', price: '$7.99', image: '/images/caesar_salad.jpg' },
-      ],
-    },
-    {
-      title: 'Dinner',
-      items: [
-        { name: 'Steak', description: 'Cooked to perfection', price: '$19.99', image: '/images/steak.jpg' },
-        { name: 'Spaghetti', description: 'Classic Italian pasta', price: '$12.99', image: '/images/spaghetti.jpg' },
-      ],
-    },
-    {
-      title: 'Drinks',
-      items: [
-        { name: 'Coffee', description: 'Freshly brewed coffee', price: '$2.99', image: '/images/coffee.jpg' },
-        { name: 'Smoothie', description: 'Mixed berry smoothie', price: '$4.99', image: '/images/smoothie.jpg' },
-      ],
-    },
-  ];
 
   return (
     <div className="bg-gradient-to-b from-yellow-100 to-orange-100 min-h-screen flex flex-col">
@@ -87,27 +88,29 @@ const Menu = () => {
         </div>
 
         {/* Active Section Content */}
-        <motion.div
-          key={activeSection}
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -50 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-        >
-          {menuSections[activeSection].items.map((item, idx) => (
-            <div
-              key={idx}
-              className="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition duration-300"
-            >
-              <img src={item.image} alt={item.name} className="w-full h-40 object-cover" />
-              <div className="p-4">
-                <h3 className="font-semibold text-lg">{item.name}</h3>
-                <p className="text-gray-600 text-sm">{item.description}</p>
-                <p className="mt-2 font-bold text-orange-500">{convertPrice(item.price)}</p>
+        {menuSections.length > 0 && (
+          <motion.div
+            key={activeSection}
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          >
+            {menuSections[activeSection].items.map((item, idx) => (
+              <div
+                key={idx}
+                className="bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition duration-300"
+              >
+                <img src={item.image} alt={item.name} className="w-full h-40 object-cover" />
+                <div className="p-4">
+                  <h3 className="font-semibold text-lg">{item.name}</h3>
+                  <p className="text-gray-600 text-sm">{item.description}</p>
+                  <p className="mt-2 font-bold text-orange-500">{convertPrice(item.price)}</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </motion.div>
+            ))}
+          </motion.div>
+        )}
       </div>
       <div className="mt-8">
         <Footer />
